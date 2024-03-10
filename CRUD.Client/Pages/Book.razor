@@ -1,0 +1,179 @@
+﻿@page "/"
+@inject IJSRuntime js
+@using CRUD.Shared.DTO;
+@inject IBookService bookService
+@inject NavigationManager NavigationManager
+@inject IToastService ToastService
+
+<h3 class="text-center">Books</h3>
+
+@*<button @onclick="@(() => ToastService.ShowInfo("Hello"))">Info</button>*@
+<table class="table table-striped table-hover">
+    <thead>
+        <tr>
+            <th>S.no.</th>
+            <th>Title</th>
+            <th>Description</th>
+            <th>Author</th>
+            <th>Category</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        @{
+            int i = 1;
+        }
+        @foreach(var book in AllBooks)
+        {
+            <tr>
+                <td>@(i++)</td>
+                <td>@book.Title</td>
+                <td>@TruncateString(book.Description, 50)</td>
+                <td>@book.Author</td>
+                <td>@book.Category</td>
+                <td>
+                    <button class="btn btn-primary" @onclick="@(args => EditBook(book.Id))"><i class="oi oi-pencil"></i></button>
+                    <button type="button" class="btn btn-danger" @onclick="@(async args => await Delete(book.Id))"><i class="oi oi-trash"></i></button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+<div>
+    <BlazoredToasts />
+</div>
+
+
+<!-- Button trigger modal -->
+@*<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
+    Launch demo modal
+</button>
+*@
+<!-- Modal -->
+<div class="modal show fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">   
+                ...
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@*<button class="btn btn-primary" @onclick="@ModalShow">Show Dialog!</button>*@
+
+@if (showModal)
+{
+  @*  <div class="modal fade show" style="display:block" aria-modal="true" role="dialog" @onclick="@ModalCancel">
+        <div class="modal-dialog" @onclick:stopPropagation="true">
+            <div class="modal-content">
+*@
+    <div class="modal show fade" style="display:block" aria-modal="true" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <!-- Modal Header -->
+                <div class="modal-header">
+                    <h4 class="modal-title">Confirm action</h4>
+                    <i style="font-size: 2rem" class="oi oi-circle-x" @onclick="@ModalCancel"></i>
+                </div>
+
+                <!-- Modal body -->
+                <div class="modal-body">
+                    <p>This is the modal content!</p>
+                </div>
+
+                <!-- Modal footer -->
+                <div class="modal-footer">
+                    <button type="button" class="btn" @onclick="@ModalCancel">Cancel</button>
+                    <button type="button" class="btn btn-danger" @onclick=@ModalOk>Delete</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+}
+
+<form>
+    <div class="form-group">
+        <label for="feedbackRating">Rate your experience:</label>
+        <div id="feedbackRating" class="radio-buttons">
+            @for (int temp = 1; temp <= 10; temp++)
+            {
+                <div class="radio-button">
+                    <input type="radio" id="@($"rating{temp}")" name="rating" value="@temp" @onclick="() => SelectRating(temp)" checked="@IsChecked(temp)" />
+                    <label for="@($"rating{temp}")">@temp</label>
+                </div>
+            }
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Submit</button>
+</form>
+
+@code {
+
+    bool showModal = false;
+
+    void ModalShow() => showModal = true;
+    void ModalCancel() => showModal = false;
+    void ModalOk()
+    {
+        Console.WriteLine("Modal ok");
+        showModal = false;
+    }
+    List<BookResponseModel> AllBooks = new List<BookResponseModel>();
+
+    public int count = 0;
+    //public Guid IdToDelete;
+
+    private string TruncateString(string input, int maxLength)
+    {
+        if (string.IsNullOrEmpty(input) || input.Length <= maxLength)
+        {
+            return input; 
+        }
+        else
+        {
+            return input.Substring(0, maxLength) + "…"; 
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        AllBooks = await bookService.GetBooks();
+    }
+
+    public void EditBook(Guid id)
+    {
+        NavigationManager.NavigateTo($"/edit/{id}");
+    }
+    public async Task Delete(Guid id)
+    {
+        var result = await bookService.Delete(id);
+        if(result.IsSuccessStatusCode)
+        {
+            ToastService.ShowSuccess("Deleted Successfully!!");
+        }
+        await OnInitializedAsync();
+    }
+
+    private int selectedRating = 0;
+
+    private void SelectRating(int rating)
+    {
+        selectedRating = rating;
+    }
+
+    private bool IsChecked(int rating)
+    {
+        return rating <= selectedRating;
+    }
+}
